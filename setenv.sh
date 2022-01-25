@@ -1,0 +1,23 @@
+#!/bin/bash
+
+SPARK_HOME=
+export SPARK_HOME
+
+K8S_API_SERVER=
+export K8S_API_SERVER
+
+# EVENT_LOG_DIR=file:///tmp/spark-events
+EVENT_LOG_DIR=
+export EVENT_LOG_DIR
+
+OS_BUCKET_NAME=
+export OS_BUCKET_NAME
+
+DB_USER=
+export DB_USER
+
+DB_PASSWORD=
+export DB_PASSWORD
+
+DB_JDBCURL=
+export DB_JDBCURL

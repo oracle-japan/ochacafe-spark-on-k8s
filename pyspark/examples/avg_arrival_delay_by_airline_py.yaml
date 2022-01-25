@@ -1,0 +1,49 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: op-avg-arrival-delay-by-airline-py
+  namespace: default
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: "iad.ocir.io/ochacafens/ochacafe/spark-py:3.2.0"
+  imagePullPolicy: Always
+  imagePullSecrets: 
+    - docker-registry-secret
+  mainApplicationFile: oci://spark@ochacafens/lib/avg_arrival_delay_by_airline.py
+  arguments: 
+    - "--input_dir"
+    - "oci://spark@ochacafens/data"
+    - "--output_dir"
+    - "oci://spark@ochacafens/out"
+  sparkVersion: "3.2.0"
+  restartPolicy:
+    type: OnFailure
+    onFailureRetries: 3
+    onFailureRetryInterval: 10
+    onSubmissionFailureRetries: 5
+    onSubmissionFailureRetryInterval: 20
+  sparkConf:
+    spark.sql.hive.metastore.sharedPrefixes: shaded.oracle,com.oracle.bmc
+    spark.hadoop.fs.oci.client.hostname: "https://objectstorage.us-ashburn-1.oraclecloud.com"
+    spark.hadoop.fs.oci.client.custom.authenticator: "com.oracle.bmc.hdfs.auth.InstancePrincipalsCustomAuthenticator"
+    spark.eventLog.enabled: "true"
+    spark.eventLog.dir: "oci://spark@ochacafens/history"
+  timeToLiveSeconds: 3600
+  nodeSelector:
+    name: "pool2"
+  driver:
+    cores: 2
+    coreLimit: "3000m"
+    memory: "2g"
+    labels:
+      version: 3.2.0
+    serviceAccount: spark
+  executor:
+    cores: 1
+    instances: 3
+    memory: "2g"
+    labels:
+      version: 3.2.0
+

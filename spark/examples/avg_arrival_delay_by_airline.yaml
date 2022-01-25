@@ -1,0 +1,49 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: op-avg-arrival-delay-by-airline
+  namespace: default
+spec:
+  type: Scala
+  mode: cluster
+  image: "iad.ocir.io/ochacafens/ochacafe/spark:3.2.0"
+  imagePullPolicy: Always
+  imagePullSecrets: 
+    - docker-registry-secret
+  mainClass: com.example.demo.AvgArrivalDelayByAirline
+  mainApplicationFile: "oci://spark@ochacafens/lib/us-flights-app_2.12-0.1.jar"
+  arguments: 
+    - "--input_dir"
+    - "oci://spark@ochacafens/data"
+    - "--output_dir"
+    - "oci://spark@ochacafens/out"
+  sparkVersion: "3.2.0"
+  restartPolicy:
+    type: Never
+  sparkConf:
+    spark.sql.hive.metastore.sharedPrefixes: shaded.oracle,com.oracle.bmc
+    spark.hadoop.fs.oci.client.hostname: "https://objectstorage.us-ashburn-1.oraclecloud.com"
+    spark.hadoop.fs.oci.client.custom.authenticator: "com.oracle.bmc.hdfs.auth.InstancePrincipalsCustomAuthenticator"
+    spark.eventLog.enabled: "true"
+    spark.eventLog.dir: "oci://spark@ochacafens/history"
+  timeToLiveSeconds: 3600
+  nodeSelector:
+    name: "pool2"
+  driver:
+    cores: 2
+    coreLimit: "2500m"
+    memory: "1024m"
+    labels:
+      version: 3.2.0
+    serviceAccount: spark
+  executor:
+    cores: 1
+    #instances: 3
+    memory: "1024m"
+    labels:
+      version: 3.2.0
+  dynamicAllocation:
+    enabled: true
+    initialExecutors: 2
+    minExecutors: 1
+    maxExecutors: 10
