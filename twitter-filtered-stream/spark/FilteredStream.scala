@@ -22,6 +22,8 @@ object FilteredStream {
 
   val MAX_BAR_LENGTH = 32
 
+  val tokenizer = new com.atilika.kuromoji.jumandic.Tokenizer();
+
   def main(args: Array[String]): Unit = {
 
     val ns = parseOptions(args)
@@ -177,7 +179,6 @@ object FilteredStream {
 
   def tokenize(x: String): Array[String] = {
 
-    val tokenizer = new com.atilika.kuromoji.jumandic.Tokenizer();
     var words = new ArrayBuffer[String]()
 
     val tokens = tokenizer.tokenize(x.replaceAll("https://t.co/[0-9a-zA-Z]+", ""))
