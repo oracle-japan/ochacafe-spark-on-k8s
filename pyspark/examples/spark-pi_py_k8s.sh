@@ -9,7 +9,7 @@ $SPARK_HOME/bin/spark-submit \
       --deploy-mode cluster \
       --conf spark.executor.instances=2 \
       --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
-      --conf spark.kubernetes.container.image=iad.ocir.io/ochacafens/ochacafe/spark-py:3.2.0 \
+      --conf spark.kubernetes.container.image=iad.ocir.io/ochacafens/ochacafe/spark-py:3.2.1 \
       --conf spark.kubernetes.container.image.pullSecrets=docker-registry-secret \
       --name spark-pi \
       local:///opt/spark/examples/src/main/python/pi.py $@

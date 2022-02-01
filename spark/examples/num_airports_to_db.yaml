@@ -6,7 +6,7 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: "iad.ocir.io/ochacafens/ochacafe/spark:3.2.0"
+  image: "iad.ocir.io/ochacafens/ochacafe/spark:3.2.1"
   imagePullPolicy: Always
   imagePullSecrets: 
     - docker-registry-secret
@@ -15,7 +15,7 @@ spec:
   arguments: 
     - "--input_file"
     - "oci://spark@ochacafens/data/airports.csv"
-  sparkVersion: "3.2.0"
+  sparkVersion: "3.2.1"
   restartPolicy:
     type: Never
   sparkConf:
@@ -32,7 +32,7 @@ spec:
     coreLimit: "3000m"
     memory: "2g"
     labels:
-      version: 3.2.0
+      version: 3.2.1
     serviceAccount: spark
     envSecretKeyRefs:
       DB_USER:
@@ -49,4 +49,4 @@ spec:
     instances: 3
     memory: "512m"
     labels:
-      version: 3.2.0
+      version: 3.2.1

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SPARK_HOME=$(pwd)/spark-3.2.0-bin-hadoop2.7
-spark_dl_url=https://dlcdn.apache.org/spark/spark-3.2.0/spark-3.2.0-bin-hadoop2.7.tgz
+SPARK_HOME=$(pwd)/spark-3.2.1-bin-hadoop2.7
+spark_dl_url=https://dlcdn.apache.org/spark/spark-3.2.1/spark-3.2.1-bin-hadoop2.7.tgz
 hdfs_connector_dl_url=https://github.com/oracle/oci-hdfs-connector/releases/download/v2.9.2.7/oci-hdfs.zip
 jdbc_jar_url=https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/21.3.0.0/ojdbc8-21.3.0.0.jar
 
@@ -36,16 +36,16 @@ cat $SPARK_HOME/conf/spark-defaults.conf.template \
  > $SPARK_HOME/conf/spark-defaults.conf
 
 # create k8s spark image
-$SPARK_HOME/bin/docker-image-tool.sh -r $DOCKER_REGISTRY -t 3.2.0 \
+$SPARK_HOME/bin/docker-image-tool.sh -r $DOCKER_REGISTRY -t 3.2.1 \
   -f $SPARK_HOME/kubernetes/dockerfiles/spark/Dockerfile build
 
 # create k8s pyspark image
-$SPARK_HOME/bin/docker-image-tool.sh -r $DOCKER_REGISTRY -t 3.2.0 \
+$SPARK_HOME/bin/docker-image-tool.sh -r $DOCKER_REGISTRY -t 3.2.1 \
   -p $SPARK_HOME/kubernetes/dockerfiles/spark/bindings/python/Dockerfile build
 
 # push images to registry
-docker push $DOCKER_REGISTRY/spark:3.2.0
-docker push $DOCKER_REGISTRY/spark-py:3.2.0
+docker push $DOCKER_REGISTRY/spark:3.2.1
+docker push $DOCKER_REGISTRY/spark-py:3.2.1
 
 
 # rm *.zip *.tgz

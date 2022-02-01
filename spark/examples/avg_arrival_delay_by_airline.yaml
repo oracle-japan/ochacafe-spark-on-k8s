@@ -6,7 +6,7 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: "iad.ocir.io/ochacafens/ochacafe/spark:3.2.0"
+  image: "iad.ocir.io/ochacafens/ochacafe/spark:3.2.1"
   imagePullPolicy: Always
   imagePullSecrets: 
     - docker-registry-secret
@@ -17,7 +17,7 @@ spec:
     - "oci://spark@ochacafens/data"
     - "--output_dir"
     - "oci://spark@ochacafens/out"
-  sparkVersion: "3.2.0"
+  sparkVersion: "3.2.1"
   restartPolicy:
     type: Never
   sparkConf:
@@ -34,14 +34,14 @@ spec:
     coreLimit: "2500m"
     memory: "1024m"
     labels:
-      version: 3.2.0
+      version: 3.2.1
     serviceAccount: spark
   executor:
     cores: 1
     #instances: 3
     memory: "1024m"
     labels:
-      version: 3.2.0
+      version: 3.2.1
   dynamicAllocation:
     enabled: true
     initialExecutors: 2

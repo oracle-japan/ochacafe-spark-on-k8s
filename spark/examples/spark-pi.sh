@@ -9,5 +9,5 @@ $SPARK_HOME/bin/spark-submit \
       --deploy-mode client \
       --class org.apache.spark.examples.SparkPi \
       --name spark-pi \
-      $SPARK_HOME/examples/jars/spark-examples_2.12-3.2.0.jar
+      $SPARK_HOME/examples/jars/spark-examples_2.12-3.2.1.jar
 

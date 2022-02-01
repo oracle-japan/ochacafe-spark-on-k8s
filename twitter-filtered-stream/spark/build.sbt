@@ -6,7 +6,7 @@ scalaVersion := "2.12.12"
 
 scalacOptions += "-target:jvm-1.8"
 
-val sparkVersion = "3.2.0"
+val sparkVersion = "3.2.1"
 
 libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion % "provided"
 

@@ -13,7 +13,7 @@ $SPARK_HOME/bin/spark-submit \
     --conf spark.executor.cores=1 \
     --conf spark.executor.memory=2g \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
-    --conf spark.kubernetes.container.image=iad.ocir.io/ochacafens/ochacafe/spark-py:3.2.0 \
+    --conf spark.kubernetes.container.image=iad.ocir.io/ochacafens/ochacafe/spark-py:3.2.1 \
     --conf spark.kubernetes.container.image.pullSecrets=docker-registry-secret \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.eventLog.enabled=true \
