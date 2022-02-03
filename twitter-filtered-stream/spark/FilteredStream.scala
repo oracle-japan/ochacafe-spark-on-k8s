@@ -16,23 +16,32 @@ import net.sourceforge.argparse4j.impl.Arguments
 import net.sourceforge.argparse4j.inf.FeatureControl
 import net.sourceforge.argparse4j.inf.Argument
 import net.sourceforge.argparse4j.inf.ArgumentParser
-
+import com.atilika.kuromoji.jumandic.Tokenizer
 
 object FilteredStream {
 
   val MAX_BAR_LENGTH = 32
 
-  val tokenizer = new com.atilika.kuromoji.jumandic.Tokenizer();
+  val tokenizer = new Tokenizer();
 
   def main(args: Array[String]): Unit = {
+
+    val db_prop = new Properties()
+    db_prop.put("user", sys.env("DB_USER"))
+    db_prop.put("password", sys.env("DB_PASSWORD"))
+    db_prop.put("driver", "oracle.jdbc.driver.OracleDriver")
 
     val ns = parseOptions(args)
     ns.getAttrs().forEach((k,v) => println(k + ": " + v))
 
+    val checkpointLocation = ns.getString("checkpointLocation").concat(if(ns.getString("checkpointLocation").endsWith("/")){""}else{"/"})
+
     val spark = SparkSession
       .builder()
-      .appName("FilteredStream")
+      .appName("SparkFilteredStream")
       .getOrCreate()
+
+    spark.sparkContext.setLogLevel("WARN")
     
     import org.apache.spark.sql.types._
     import spark.implicits._
@@ -68,10 +77,11 @@ object FilteredStream {
       base_stream
     }
 
-    val out = if(ns.getString("sink").equals("console")){ // keywords to console
+    val out = if(ns.getString("sink").equals("console") && ns.getBoolean("tokenize")){ // keywords to console
       stream
         .filter($"count" >= 5)
         .writeStream
+        .option("checkpointLocation", checkpointLocation.concat("console-sink"))
         .format("console")
         .outputMode(ns.getString("output_mode"))
         .option("truncate", "false")
@@ -79,11 +89,7 @@ object FilteredStream {
         .queryName("keywords to console")
         .start()
     }else{ // keywords to database
-      val db_prop = new Properties()
-      db_prop.put("user", sys.env("DB_USER"))
-      db_prop.put("password", sys.env("DB_PASSWORD"))
-      db_prop.put("driver", "oracle.jdbc.driver.OracleDriver")
-      stream // count keywords
+      stream
         .select(
           $"window.start".as("window_start"), 
           $"window.end".as("window_end"), 
@@ -91,6 +97,7 @@ object FilteredStream {
           $"count".as("appearances"), 
         )
         .writeStream
+        .option("checkpointLocation", checkpointLocation.concat("database-sink"))
         .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
           batchDF.write.mode("append")
             .option("truncate", true)
@@ -105,6 +112,7 @@ object FilteredStream {
     val out2 = base_stream // tweets to console
       .select($"text")
       .writeStream
+      .option("checkpointLocation", checkpointLocation.concat("console"))
       .format("console")
       .outputMode(ns.getString("output_mode"))
       .option("truncate", "false")
@@ -234,6 +242,7 @@ object FilteredStream {
     addArgument(parser, "--watermark", "30 seconds")
     addArgument(parser, "--num-output-rows", "50")
     addArgument(parser, "--sink", "database")
+    addArgument(parser, "--checkpointLocation", "file:/tmp")
 
     parser.parseArgs(args)
   }
