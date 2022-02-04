@@ -20,8 +20,6 @@ import com.atilika.kuromoji.jumandic.Tokenizer
 
 object FilteredStream {
 
-  val MAX_BAR_LENGTH = 32
-
   val tokenizer = new Tokenizer();
 
   def main(args: Array[String]): Unit = {
@@ -56,133 +54,71 @@ object FilteredStream {
       .add(name = "text", dataType = StringType, nullable = false)
 
     val tokenizeUDF = spark.udf.register("tokenize", (x:String) => tokenize(x))
-    val barUDF = udf((n:Int) => bar(n))
 
-    val base_stream = subscribe(spark)
+    val base_stream = 
+      spark
+      .readStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", ns.getString("bootstrap_servers"))
+      .option("startingoffsets", "latest")
+      .option("failOnDataLoss", false)
+      .option("subscribe", ns.getString("topic"))
+      .load()
       .selectExpr("CAST(value AS STRING)")
       .select(from_json($"value", tweetDataSchema).as("tweetData"))
       .select($"tweetData.ts".as("ts"), $"tweetData.data".as("tweet"))
       .select($"ts", from_json($"tweet", dataSchema).as("data"))
       .select($"ts", $"data.text".as("text"))
 
-    val stream = if(ns.getBoolean("tokenize")){
-      base_stream
-        .select($"ts", tokenizeUDF($"text").as("tokens"))
-        .select($"ts", explode($"tokens").as("token"))
-        .withWatermark("ts", ns.getString("watermark")) // necessary when append mode
-        .groupBy(window($"ts", ns.getString("window")), $"token")
-        .agg(count("token").as("count"))
-        .withColumn("bar", barUDF($"count"))
-    }else{
-      base_stream
-    }
+    /*
+    root
+     |-- window: struct (nullable = false)
+     |    |-- start: timestamp (nullable = true)
+     |    |-- end: timestamp (nullable = true)
+     |-- token: string (nullable = true)
+     |-- count: long (nullable = false)
+    */
 
-    val out = if(ns.getString("sink").equals("console") && ns.getBoolean("tokenize")){ // keywords to console
-      stream
-        .filter($"count" >= 5)
-        .writeStream
-        .option("checkpointLocation", checkpointLocation.concat("console-sink"))
-        .format("console")
-        .outputMode(ns.getString("output_mode"))
-        .option("truncate", "false")
-        .option("numRows", ns.getString("num_output_rows"))
-        .queryName("keywords to console")
-        .start()
-    }else{ // keywords to database
-      stream
-        .select(
-          $"window.start".as("window_start"), 
-          $"window.end".as("window_end"), 
-          $"token".as("keyword"), 
-          $"count".as("appearances"), 
-        )
-        .writeStream
-        .option("checkpointLocation", checkpointLocation.concat("database-sink"))
-        .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-          batchDF.write.mode("append")
-            .option("truncate", true)
-            .option("isolationLevel", "READ_COMMITTED")
-            .option("batchsize", 4096)
-            .jdbc(sys.env("DB_JDBCURL"), "TWEET_KEYWORDS", db_prop)
-        }
-        .queryName("keywords to database")
-        .start()
-    }
+    val keywordsToDatabase =
+      base_stream
+      .select($"ts", tokenizeUDF($"text").as("tokens"))
+      .select($"ts", explode($"tokens").as("token"))
+      .withWatermark("ts", ns.getString("watermark"))
+      .groupBy(window($"ts", ns.getString("window")), $"token")
+      .agg(count("token").as("count"))
+      .select(
+        $"window.start".as("window_start"), 
+        $"window.end".as("window_end"), 
+        $"token".as("keyword"), 
+        $"count".as("appearances"), 
+      )
+      .writeStream
+      .option("checkpointLocation", checkpointLocation.concat("database-sink"))
+      .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+        batchDF.write.mode("append")
+          .option("truncate", true)
+          .option("isolationLevel", "READ_COMMITTED")
+          .option("batchsize", 4096)
+          .jdbc(sys.env("DB_JDBCURL"), "TWEET_KEYWORDS", db_prop)
+      }
+      .queryName("keywords to database")
+      .start()
 
-    val out2 = base_stream // tweets to console
+    val tweetsToConsole =
+      base_stream
       .select($"text")
       .writeStream
       .option("checkpointLocation", checkpointLocation.concat("console"))
       .format("console")
-      .outputMode(ns.getString("output_mode"))
+      .outputMode("append")
       .option("truncate", "false")
       .option("numRows", ns.getString("num_output_rows"))
       .queryName("tweets to console")
       .start()
 
-    out.awaitTermination()
-    out2.awaitTermination()
+    keywordsToDatabase.awaitTermination()
+    tweetsToConsole.awaitTermination()
     spark.close()
-  }
-
-
-  def subscribe(spark: SparkSession): DataFrame = {
-
-    val config = new Properties()
-    var in: InputStream = null;
-    try{
-      in = getClass().getResourceAsStream("/config.properties")
-      config.load(in)
-    }finally{
-      if(null != in) in.close()
-    }
-
-    val loginModule = "org.apache.kafka.common.security.plain.PlainLoginModule"
-
-    val kafkaType = config.getProperty("kafka.sub.type")
-    val subTenantName = config.getProperty("kafka.sub.tenant-name")
-    val subPoolId = config.getProperty("kafka.sub.pool-id")
-    val subStreamingServer = config.getProperty("kafka.sub.streaming-server")
-    val subUserName = config.getProperty("kafka.sub.user-name")
-    val subAuthToken = config.getProperty("kafka.sub.auth-token")
-    val subTopic = config.getProperty("kafka.sub.topic")
-    val subStartingOffset = config.getProperty("kafka.sub.starting-offset", "latest")
-
-    val subBootstrapServers = config.getProperty("kafka.sub.bootstrap-servers")
-
-    val stream = if(kafkaType.equals("oci-streaming")){
-      spark
-        .readStream
-        .format("kafka")
-        .option("kafka.bootstrap.servers", subStreamingServer)
-        .option("kafka.security.protocol", "SASL_SSL")
-        .option("kafka.sasl.mechanism", "PLAIN")
-        .option("kafka.sasl.jaas.config", s"""${loginModule} required username="${subTenantName}/${subUserName}/${subPoolId}" password="${subAuthToken}";""")
-        .option("kafka.max.partition.fetch.bytes", 1024 * 1024)
-    }else{
-      spark
-        .readStream
-        .format("kafka")
-        .option("kafka.bootstrap.servers", subBootstrapServers)
-    }
-
-    stream
-      .option("startingoffsets", subStartingOffset)
-      .option("failOnDataLoss", false)
-      .option("subscribe", subTopic)
-      .load
-
-  }
-
-  def bar(n: Int): String = {
-    val buf = new StringBuffer()
-    for(i <- 1 to java.lang.Math.min(n, MAX_BAR_LENGTH)){
-      buf.append("*")
-    } 
-    if(n > MAX_BAR_LENGTH){
-      buf.append("＊")
-    }
-    buf.toString()
   }
 
   def tokenize(x: String): Array[String] = {
@@ -231,19 +167,18 @@ object FilteredStream {
   }
 
   def parseOptions(args: Array[String]): Namespace = {
+
     val parser = ArgumentParsers.newFor("prog").build()
-    
     val argument = parser.addArgument("-v", "--verbose").action(Arguments.storeTrue())
     val setDefaultMethod = argument.getClass().getMethod("setDefault", {new Object().getClass()})
 
-    parser.addArgument("-t", "--tokenize").action(Arguments.storeTrue())
-    addArgument(parser, "--output-mode", "update")
+    addArgument(parser, "--bootstrap-servers", "localhost:9092")
+    parser.addArgument("--topic")
     addArgument(parser, "--window", "30 seconds")
     addArgument(parser, "--watermark", "30 seconds")
-    addArgument(parser, "--num-output-rows", "50")
-    addArgument(parser, "--sink", "database")
+    addArgument(parser, "--num-output-rows", "128")
     addArgument(parser, "--checkpointLocation", "file:/tmp")
-
+    
     parser.parseArgs(args)
   }
 
