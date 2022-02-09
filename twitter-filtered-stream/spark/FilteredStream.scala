@@ -53,8 +53,8 @@ object FilteredStream {
       .add(name = "id", dataType = StringType, nullable = false)
       .add(name = "text", dataType = StringType, nullable = false)
 
-    val tokenizeUDF = spark.udf.register("tokenize", (x:String) => tokenize(x))
-
+    val tokenizeUDF = udf((x:String) => tokenize(x)).asNondeterministic
+    
     val base_stream = 
       spark
       .readStream
