@@ -93,7 +93,6 @@ object FilteredStream {
         $"count".as("appearances"), 
       )
       .writeStream
-      .option("checkpointLocation", checkpointLocation.concat("database-sink"))
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
         batchDF.write.mode("append")
           .option("truncate", true)
@@ -101,6 +100,7 @@ object FilteredStream {
           .option("batchsize", 4096)
           .jdbc(sys.env("DB_JDBCURL"), "TWEET_KEYWORDS", db_prop)
       }
+      .option("checkpointLocation", checkpointLocation.concat("database-sink"))
       .queryName("keywords to database")
       .start()
 
@@ -108,11 +108,11 @@ object FilteredStream {
       base_stream
       .select($"text")
       .writeStream
-      .option("checkpointLocation", checkpointLocation.concat("console"))
       .format("console")
       .outputMode("append")
       .option("truncate", "false")
       .option("numRows", ns.getString("num_output_rows"))
+      .option("checkpointLocation", checkpointLocation.concat("console"))
       .queryName("tweets to console")
       .start()
 
