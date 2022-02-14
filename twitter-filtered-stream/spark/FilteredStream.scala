@@ -70,15 +70,6 @@ object FilteredStream {
       .select($"ts", from_json($"tweet", dataSchema).as("data"))
       .select($"ts", $"data.text".as("text"))
 
-    /*
-    root
-     |-- window: struct (nullable = false)
-     |    |-- start: timestamp (nullable = true)
-     |    |-- end: timestamp (nullable = true)
-     |-- token: string (nullable = true)
-     |-- count: long (nullable = false)
-    */
-
     val keywordsToDatabase =
       base_stream
       .select($"ts", tokenizeUDF($"text").as("tokens"))
