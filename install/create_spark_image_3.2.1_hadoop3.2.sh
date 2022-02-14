@@ -23,6 +23,9 @@ cp oci-hdfs/third-party/lib/*.jar $SPARK_HOME/jars
 # download oracle jdbc driver
 wget -P $SPARK_HOME/jars $jdbc_jar_url
 
+# resolve duplication
+mv $SPARK_HOME/jars/jsr305-3.0.0.jar $SPARK_HOME/jars/jsr305-3.0.0.jar.original
+
 # generate log4j.properties
 cat $SPARK_HOME/conf/log4j.properties.template \
  | sed -e '$a\\nlog4j.logger.com.oracle.bmc=ERROR'\
