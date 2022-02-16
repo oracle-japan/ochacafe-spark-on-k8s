@@ -44,14 +44,14 @@ object FilteredStream {
     import org.apache.spark.sql.types._
     import spark.implicits._
 
-    val tweetDataSchema = new StructType()
-      .add(name = "data", dataType = StringType, nullable = false)
-      .add(name = "matching_rules", dataType = StringType, nullable = false)
-      .add(name = "ts", dataType = TimestampType, nullable = false)
-
     val dataSchema = new StructType()
       .add(name = "id", dataType = StringType, nullable = false)
       .add(name = "text", dataType = StringType, nullable = false)
+
+    val tweetDataSchema = new StructType()
+      .add(name = "data", dataType = dataSchema, nullable = false)
+      .add(name = "matching_rules", dataType = StringType, nullable = false)
+      .add(name = "ts", dataType = TimestampType, nullable = false)
 
     val tokenizeUDF = udf((x:String) => tokenize(x)).asNondeterministic
     
@@ -66,8 +66,7 @@ object FilteredStream {
       .load()
       .selectExpr("CAST(value AS STRING)")
       .select(from_json($"value", tweetDataSchema).as("tweetData"))
-      .select($"tweetData.ts".as("ts"), $"tweetData.data".as("tweet"))
-      .select($"ts", from_json($"tweet", dataSchema).as("data"))
+      .select($"tweetData.ts".as("ts"), $"tweetData.data".as("data"))
       .select($"ts", $"data.text".as("text"))
 
     val keywordsToDatabase =

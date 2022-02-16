@@ -54,14 +54,14 @@ def main():
     spark = SparkSession.builder.appName("spark-filtered-stream_py").getOrCreate()
     spark.sparkContext.setLogLevel('WARN')
 
-    tweetDataSchema = StructType() \
-      .add("data", StringType(), False) \
-      .add("matching_rules", StringType(), False) \
-      .add("ts", TimestampType(), False)
-
     dataSchema = StructType() \
       .add("id", StringType(), False) \
       .add("text", StringType(), False)
+
+    tweetDataSchema = StructType() \
+      .add("data", dataSchema, False) \
+      .add("matching_rules", StringType(), False) \
+      .add("ts", TimestampType(), False)
 
     base_stream = spark.readStream \
       .format("kafka") \
@@ -72,8 +72,7 @@ def main():
       .load() \
       .selectExpr("CAST(value AS STRING)") \
       .select(from_json("value", tweetDataSchema).alias("tweetData")) \
-      .select(col("tweetData.ts").alias("ts"), col("tweetData.data").alias("tweet")) \
-      .select("ts", from_json("tweet", dataSchema).alias("data")) \
+      .select(col("tweetData.ts").alias("ts"), col("tweetData.data").alias("data")) \
       .select("ts", col("data.text").alias("text")) \
 
     keywordsToDatabase = base_stream \
