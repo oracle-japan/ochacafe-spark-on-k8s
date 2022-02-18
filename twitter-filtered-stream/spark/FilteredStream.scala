@@ -157,18 +157,14 @@ object FilteredStream {
   }
 
   def parseOptions(args: Array[String]): Namespace = {
-
     val parser = ArgumentParsers.newFor("prog").build()
-    val argument = parser.addArgument("-v", "--verbose").action(Arguments.storeTrue())
-    val setDefaultMethod = argument.getClass().getMethod("setDefault", {new Object().getClass()})
-
-    addArgument(parser, "--bootstrap-servers", "localhost:9092")
+    parser.addArgument("-v", "--verbose").action(Arguments.storeTrue())
     parser.addArgument("--topic")
+    addArgument(parser, "--bootstrap-servers", "localhost:9092")
     addArgument(parser, "--window", "30 seconds")
     addArgument(parser, "--watermark", "30 seconds")
     addArgument(parser, "--num-output-rows", "128")
     addArgument(parser, "--checkpointLocation", "file:/tmp")
-    
     parser.parseArgs(args)
   }
 
