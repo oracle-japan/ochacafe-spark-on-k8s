@@ -2,57 +2,38 @@ import argparse
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StringType, TimestampType, ArrayType
-from pyspark.sql.functions import count, col, udf, from_json, window, explode
-from typing import List
+from pyspark.sql.functions import count, col, udf, from_json, window, explode, from_utc_timestamp
 
-db_prop = {
-    'user' : os.environ['DB_USER'], 
-    'password' : os.environ['DB_PASSWORD'], 
-    'driver' : "oracle.jdbc.driver.OracleDriver" 
-}
+import tweet_tokenizer
 
-def tokenize(str) -> List[str]:
-    # TODO: ここにキーワード抽出処理を書く
-    """
-    >>> from janome.tokenizer import Tokenizer
-    >>> t = Tokenizer()
-    >>> for token in t.tokenize(u'すもももももももものうち'):
-    ...     print(token)
-    ...
-    すもも 名詞,一般,*,*,*,*,すもも,スモモ,スモモ
-    も    助詞,係助詞,*,*,*,*,も,モ,モ
-    もも  名詞,一般,*,*,*,*,もも,モモ,モモ
-    も    助詞,係助詞,*,*,*,*,も,モ,モ
-    もも  名詞,一般,*,*,*,*,もも,モモ,モモ
-    の    助詞,連体化,*,*,*,*,の,ノ,ノ
-    うち  名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
-    """
-    return []
-
-def forarch_batch(batch_df, batch_id):
+def foreach_batch(batch_df, batch_id):
     #batch_df.show()
-    batch_df.write.mode("append") \
-    .option("truncate", True) \
-    .option("isolationLevel", "READ_COMMITTED") \
-    .option("batchsize", 4096) \
-    .jdbc(os.environ["DB_JDBCURL"], "TWEET_KEYWORDS", db_prop)
+    batch_df.write \
+    .option('truncate', True) \
+    .option('isolationLevel', 'READ_COMMITTED') \
+    .option('batchsize', 4096) \
+    .jdbc(os.environ['DB_JDBCURL'], 'TWEET_KEYWORDS', 'append', {
+        'user' : os.environ['DB_USER'], 
+        'password' : os.environ['DB_PASSWORD'], 
+        'driver' : 'oracle.jdbc.driver.OracleDriver' 
+    })
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bootstrap-servers", default='localhost:9092')
-    parser.add_argument("--topic", default='my-topic')
-    parser.add_argument("--window", default='30 seconds')
-    parser.add_argument("--watermark", default='30 seconds')
-    parser.add_argument("--num-output-rows", default='128')
-    parser.add_argument("--checkpoint-location", default='file:/tmp/spark/checlpoint')
+    parser.add_argument('--bootstrap-servers', default='localhost:9092')
+    parser.add_argument('--topic', default='my-topic')
+    parser.add_argument('--window', default='30 seconds')
+    parser.add_argument('--watermark', default='30 seconds')
+    parser.add_argument('--num-output-rows', default='128')
+    parser.add_argument('--checkpoint-location', default='file:/tmp/spark/checlpoint')
     args = parser.parse_args()
 
-    checkpoint_location = args.checkpoint_location + "/" if not args.checkpoint_location.endswith('/') else ''
+    checkpoint_location = args.checkpoint_location + '/' if not args.checkpoint_location.endswith('/') else ''
 
-    tokenize_udf = udf(tokenize, ArrayType(StringType()))
+    tokenize_udf = udf(tweet_tokenizer.tokenize, ArrayType(StringType())).asNondeterministic()
 
     spark = SparkSession.builder.appName("spark-filtered-stream_py").getOrCreate()
-    spark.sparkContext.setLogLevel('WARN')
+    spark.sparkContext.setLogLevel("WARN")
 
     dataSchema = StructType() \
       .add("id", StringType(), False) \
@@ -88,7 +69,7 @@ def main():
         col("count").alias("appearances"), 
       ) \
       .writeStream \
-      .foreachBatch(forarch_batch) \
+      .foreachBatch(foreach_batch) \
       .option("checkpointLocation", checkpoint_location + "database-sink") \
       .queryName("keywords to database") \
       .start()
