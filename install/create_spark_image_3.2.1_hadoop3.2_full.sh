@@ -4,7 +4,7 @@ DOCKER_REGISTRY=iad.ocir.io/ochacafe
 
 SPARK_HOME=$(pwd)/spark-3.2.1-bin-hadoop3.2
 spark_dl_url=https://dlcdn.apache.org/spark/spark-3.2.1/spark-3.2.1-bin-hadoop3.2.tgz
-hdfs_connector_dl_url=https://github.com/oracle/oci-hdfs-connector/releases/download/v3.3.1.0.3.2/oci-hdfs.zip
+hdfs_connector_dl_url=https://github.com/oracle/oci-hdfs-connector/releases/download/v3.2.1.3/oci-hdfs.zip
 jdbc_jar_url=https://repo.maven.apache.org/maven2/com/oracle/database/jdbc/ojdbc8/21.3.0.0/ojdbc8-21.3.0.0.jar
 
 # download spark
